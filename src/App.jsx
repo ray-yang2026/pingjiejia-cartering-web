@@ -3,26 +3,26 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { 
   getFirestore, collection, doc, onSnapshot, 
-  addDoc, deleteDoc 
+  addDoc, setDoc, serverTimestamp 
 } from 'firebase/firestore';
 import { 
   PlusCircle, ChevronRight, ChevronLeft, ShoppingCart, Utensils, 
-  ClipboardList, Trash2, Calendar, Sun, Moon, Filter, Phone, User, Hash
+  ClipboardList, Trash2, Calendar, Sun, Moon, Filter, Phone, User, Hash, CloudUpload
 } from 'lucide-react';
 
 // ==========================================
-// ⚠️ 这里的配置请在部署时填入您的真实信息
+// ⚠️ 這裡的配置已經根據您的提供進行更新
 // ==========================================
 const myPrivateConfig = {
-  apiKey: "AIzaSyAvciancSscS_qf-df5cifrqjKWtMOODj0", // <--- 请将您旧代码中的值填到这里
+  apiKey: "AIzaSyAvciancSscS_qf-df5cifrqjKWtMOODj0",
   authDomain: "pingjiejia-liudongcan.firebaseapp.com", 
   projectId: "pingjiejia-liudongcan",
   storageBucket: "pingjiejia-liudongcan.firebasestorage.app",
   messagingSenderId: "193505058332",
   appId: "1:193505058332:web:cfc5f51fb8370ddeb309d9",
   measurementId: "G-6Z8Y1YYE0D"
-  };
-  
+};
+
 const firebaseConfig = typeof __firebase_config !== 'undefined' 
   ? JSON.parse(__firebase_config) 
   : myPrivateConfig;
@@ -33,31 +33,32 @@ const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'catering-pro-v1';
 
 const INITIAL_DISHES = [
-  { id: '1', name: "至尊佛跳墙", category: "推荐菜", cost: 120, image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=200", ingredients: [{ item: "海参", amount: 0.1, unit: "kg", vendor: "干货商" }, { item: "鲍鱼", amount: 2, unit: "个", vendor: "水产商" }] },
-  { id: '2', name: "秘制红烧肉", category: "肉菜", cost: 40, image: "https://images.unsplash.com/photo-1603073163308-9654c3fb70b5?w=200", ingredients: [{ item: "猪五花", amount: 0.5, unit: "kg", vendor: "肉食商" }] },
-  { id: '3', name: "清炒时蔬", category: "素菜", cost: 10, image: "https://images.unsplash.com/photo-1546793665-c74683c3f43d?w=200", ingredients: [{ item: "青菜", amount: 0.4, unit: "kg", vendor: "蔬菜商" }] },
-  { id: '4', name: "蒜蓉大龙虾", category: "推荐菜", cost: 180, image: "https://images.unsplash.com/photo-1559737558-2f58368305c6?w=200", ingredients: [{ item: "龙虾", amount: 1, unit: "只", vendor: "水产商" }] },
+  { id: '1', name: "至尊佛跳牆", category: "推薦菜", cost: 120, image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=200", ingredients: [{ item: "海參", amount: 0.1, unit: "kg", vendor: "干貨商" }, { item: "鮑魚", amount: 2, unit: "個", vendor: "水產商" }] },
+  { id: '2', name: "秘制紅燒肉", category: "肉菜", cost: 40, image: "https://images.unsplash.com/photo-1603073163308-9654c3fb70b5?w=200", ingredients: [{ item: "豬五花", amount: 0.5, unit: "kg", vendor: "肉食商" }] },
+  { id: '3', name: "清炒時蔬", category: "素菜", cost: 10, image: "https://images.unsplash.com/photo-1546793665-c74683c3f43d?w=200", ingredients: [{ item: "青菜", amount: 0.4, unit: "kg", vendor: "蔬菜商" }] },
+  { id: '4', name: "蒜蓉大龍蝦", category: "推薦菜", cost: 180, image: "https://images.unsplash.com/photo-1559737558-2f58368305c6?w=200", ingredients: [{ item: "龍蝦", amount: 1, unit: "只", vendor: "水產商" }] },
 ];
 
-const CATEGORIES = ["全部分类", "推荐菜", "肉菜", "素菜", "凉菜", "汤羹"];
+const CATEGORIES = ["全部分類", "推薦菜", "肉菜", "素菜", "涼菜", "湯羹"];
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
-  // 客户信息状态
+  // 客戶信息狀態
   const [customerInfo, setCustomerInfo] = useState({
     reason: '婚事', name: '', phone: '', tables: 10, days: 1
   });
 
-  // 订菜状态与分类筛选
+  // 訂菜狀態與分類篩選
   const [orders, setOrders] = useState({});
   const [activeTab, setActiveTab] = useState('day1-lunch');
-  const [selectedCategory, setSelectedCategory] = useState("全部分类");
+  const [selectedCategory, setSelectedCategory] = useState("全部分類");
   const [dishList, setDishList] = useState(INITIAL_DISHES);
 
-  // 初始化鉴权
+  // 初始化鑑權
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -76,7 +77,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 监听数据库菜品
+  // 監聽資料庫菜品
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'dishes'), (snap) => {
@@ -84,9 +85,9 @@ export default function App() {
       if (dishes.length > 0) setDishList(dishes);
     }, (error) => console.log("Firestore error:", error));
     return () => unsub();
-  }, [user]);
+  }, [user, appId]);
 
-  // 使用 useCallback 优化输入，防止浏览器在输入时频繁重绘导致崩溃
+  // 使用 useCallback 優化輸入
   const handleInputChange = useCallback((field, value) => {
     setCustomerInfo(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -111,13 +112,33 @@ export default function App() {
     });
   }, [activeTab]);
 
-  // 筛选菜品逻辑
+  // 將訂單保存到雲端 Firestore (持久化保存)
+  const saveOrderToCloud = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const orderRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+      await addDoc(orderRef, {
+        customerInfo,
+        orders,
+        createdAt: serverTimestamp(),
+        userId: user.uid
+      });
+      setStep(4);
+    } catch (error) {
+      console.error("保存失敗:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 篩選菜品邏輯
   const filteredDishes = useMemo(() => {
-    if (selectedCategory === "全部分类") return dishList;
+    if (selectedCategory === "全部分類") return dishList;
     return dishList.filter(d => d.category === selectedCategory);
   }, [dishList, selectedCategory]);
 
-  // 计算汇总数据
+  // 計算匯總數據
   const summaryData = useMemo(() => {
     const ingredients = {};
     let totalCost = 0;
@@ -136,22 +157,22 @@ export default function App() {
     return { ingredients: Object.values(ingredients), totalCost };
   }, [orders, customerInfo.tables]);
 
-  if (loading) return <div className="loading-screen">正在准备订菜系统...</div>;
+  if (loading) return <div className="loading-screen">正在準備訂菜系統...</div>;
 
   return (
     <div className="app-container">
       <nav className="nav-bar">
-        <div className="logo"><Utensils size={24} /> <span>流动餐订菜 PRO</span></div>
-        <div className="status-badge"><span className="dot"></span> 实时同步模式</div>
+        <div className="logo"><Utensils size={24} /> <span>流動餐訂菜 PRO</span></div>
+        <div className="status-badge"><span className="dot"></span> 雲端同步中</div>
       </nav>
 
       <main className="main-content">
         {step === 1 && (
           <div className="hero-section">
-            <h1 className="title">宴席点菜数字化管理</h1>
-            <p className="subtitle">支持多日排餐、分类点菜、自动导出食材清单</p>
+            <h1 className="title">宴席點菜數位化管理</h1>
+            <p className="subtitle">支持多日排餐、分類點菜、自動導出食材清單</p>
             <button className="btn-primary main-btn" onClick={() => setStep(2)}>
-               开始创建订单 <ChevronRight size={20} />
+               開始創建訂單 <ChevronRight size={20} />
             </button>
           </div>
         )}
@@ -160,34 +181,34 @@ export default function App() {
           <div className="form-card animate-in">
             <h2 className="section-title">
               <button onClick={() => setStep(1)} className="back-btn"><ChevronLeft /></button> 
-              完善客户信息
+              完善客戶信息
             </h2>
             <div className="input-grid">
               <div className="field">
-                <label><Filter size={14}/> 办酒事由</label>
+                <label><Filter size={14}/> 辦酒事由</label>
                 <select value={customerInfo.reason} onChange={e => handleInputChange('reason', e.target.value)}>
-                  <option>婚事</option><option>乔迁</option><option>寿宴</option><option>满月</option><option>其他</option>
+                  <option>婚事</option><option>喬遷</option><option>壽宴</option><option>滿月</option><option>其他</option>
                 </select>
               </div>
               <div className="field">
-                <label><User size={14}/> 客户姓名</label>
-                <input value={customerInfo.name} onChange={e => handleInputChange('name', e.target.value)} placeholder="如：张先生" />
+                <label><User size={14}/> 客戶姓名</label>
+                <input value={customerInfo.name} onChange={e => handleInputChange('name', e.target.value)} placeholder="如：張先生" />
               </div>
               <div className="field">
-                <label><Phone size={14}/> 联系电话</label>
+                <label><Phone size={14}/> 聯繫電話</label>
                 <input type="tel" value={customerInfo.phone} onChange={e => handleInputChange('phone', e.target.value)} placeholder="必填" />
               </div>
               <div className="field">
-                <label><Hash size={14}/> 预估桌数</label>
+                <label><Hash size={14}/> 預估桌數</label>
                 <input type="number" value={customerInfo.tables} onChange={e => handleInputChange('tables', e.target.value)} />
               </div>
               <div className="field full-width">
-                <label><Calendar size={14}/> 办酒天数 (系统将自动生成每日餐次)</label>
+                <label><Calendar size={14}/> 辦酒天數</label>
                 <input type="number" min="1" max="10" value={customerInfo.days} onChange={e => handleInputChange('days', e.target.value)} />
               </div>
             </div>
             <button className="btn-primary" disabled={!customerInfo.name || !customerInfo.phone} onClick={() => setStep(3)}>
-              确认并排定菜谱
+              確認並排定菜譜
             </button>
           </div>
         )}
@@ -195,7 +216,7 @@ export default function App() {
         {step === 3 && (
           <div className="ordering-view animate-in">
             <div className="category-sidebar">
-               <h3>菜品分类</h3>
+               <h3>菜品分類</h3>
                {CATEGORIES.map(cat => (
                  <button 
                   key={cat} 
@@ -246,7 +267,7 @@ export default function App() {
             <div className="cart-side">
                <div className="cart-header">
                  <ShoppingCart size={20} />
-                 <h3>当前餐次已选 ({(orders[activeTab] || []).length})</h3>
+                 <h3>當前餐次已選 ({(orders[activeTab] || []).length})</h3>
                </div>
                <div className="cart-items">
                  {(orders[activeTab] || []).map((item) => (
@@ -255,11 +276,13 @@ export default function App() {
                      <button onClick={() => removeFromOrder(item.orderId)}><Trash2 size={14}/></button>
                    </div>
                  ))}
-                 {(!orders[activeTab] || orders[activeTab].length === 0) && <p className="empty-msg">请选择菜品</p>}
+                 {(!orders[activeTab] || orders[activeTab].length === 0) && <p className="empty-msg">請選擇菜品</p>}
                </div>
                <div className="cart-footer">
-                 <div className="cost-summary">总成本: <span>¥{summaryData.totalCost}</span></div>
-                 <button className="btn-primary" onClick={() => setStep(4)}>生成报表</button>
+                 <div className="cost-summary">總成本: <span>¥{summaryData.totalCost}</span></div>
+                 <button className="btn-primary" onClick={saveOrderToCloud} disabled={isSaving}>
+                   {isSaving ? '正在保存到雲端...' : '生成報表並保存'}
+                 </button>
                </div>
             </div>
           </div>
@@ -269,29 +292,30 @@ export default function App() {
           <div className="report-view animate-in">
             <div className="report-header">
               <div>
-                <h2>{customerInfo.name} 宴席采购清单</h2>
+                <div className="save-tag"><CloudUpload size={14}/> 數據已同步至雲端</div>
+                <h2>{customerInfo.name} 宴席採購清單</h2>
                 <p>{customerInfo.phone} · {customerInfo.reason} · 共 {customerInfo.days} 天</p>
               </div>
               <div className="actions">
-                <button className="btn-secondary" onClick={() => window.print()}><ClipboardList size={18} /> 打印/导出</button>
-                <button className="btn-text" onClick={() => setStep(1)}>返回首页</button>
+                <button className="btn-secondary" onClick={() => window.print()}><ClipboardList size={18} /> 打印/導出</button>
+                <button className="btn-text" onClick={() => setStep(1)}>返回首頁</button>
               </div>
             </div>
             
             <div className="report-content">
               <div className="report-section">
-                <h3>每日菜谱安排</h3>
+                <h3>每日菜譜安排</h3>
                 {[...Array(parseInt(customerInfo.days || 1))].map((_, i) => (
                   <div key={i} className="report-day-box">
                     <h4>第 {i+1} 天</h4>
                     <div className="meal-detail">
-                      <p><strong>午宴菜谱：</strong> {(orders[`day${i+1}-lunch`] || []).map(d => d.name).join('、') || '未选菜'}</p>
-                      <p><strong>晚宴菜谱：</strong> {(orders[`day${i+1}-dinner`] || []).map(d => d.name).join('、') || '未选菜'}</p>
+                      <p><strong>午宴菜譜：</strong> {(orders[`day${i+1}-lunch`] || []).map(d => d.name).join('、') || '未選菜'}</p>
+                      <p><strong>晚宴菜譜：</strong> {(orders[`day${i+1}-dinner`] || []).map(d => d.name).join('、') || '未選菜'}</p>
                     </div>
                   </div>
                 ))}
 
-                <h3 style={{marginTop: '32px'}}>食材汇总采购单</h3>
+                <h3 style={{marginTop: '32px'}}>食材匯總採購單</h3>
                 <div className="ingredient-list">
                   {summaryData.ingredients.map((ing, i) => (
                     <div key={i} className="ing-item">
@@ -303,9 +327,9 @@ export default function App() {
               </div>
 
               <div className="report-section total-card">
-                <h3>财务概算</h3>
-                <div className="stat-row"><span>总计成本</span> <strong className="big-price">¥{summaryData.totalCost}</strong></div>
-                <div className="stat-row"><span>单桌均价</span> <strong>¥{(summaryData.totalCost / (customerInfo.tables * Object.keys(orders).length || 1)).toFixed(0)}</strong></div>
+                <h3>財務概算</h3>
+                <div className="stat-row"><span>總計成本</span> <strong className="big-price">¥{summaryData.totalCost}</strong></div>
+                <div className="stat-row"><span>單桌均價</span> <strong>¥{(summaryData.totalCost / (customerInfo.tables * Object.keys(orders).length || 1)).toFixed(0)}</strong></div>
               </div>
             </div>
           </div>
@@ -321,6 +345,8 @@ export default function App() {
         .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.5rem; color: var(--primary); }
         .status-badge { font-size: 12px; background: white; padding: 4px 12px; border-radius: 20px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 6px; }
         .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; }
+
+        .save-tag { font-size: 12px; color: #10b981; display: flex; align-items: center; gap: 4px; margin-bottom: 8px; font-weight: bold; }
 
         .hero-section { text-align: center; padding: 80px 0; }
         .title { font-size: 3rem; font-weight: 900; margin-bottom: 20px; color: #111827; }
