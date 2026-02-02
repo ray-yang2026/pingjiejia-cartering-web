@@ -58,7 +58,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("全部分類");
   const [dishList, setDishList] = useState(INITIAL_DISHES);
 
-  // 初始化鑑權
+  // 初始化鑑權 - 增加錯誤處理和離線支持
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -67,7 +67,11 @@ export default function App() {
         } else {
           await signInAnonymously(auth);
         }
-      } catch (err) { console.error("Auth error", err); }
+      } catch (err) {
+        console.error("Auth error", err);
+        // 即使认证失败也允许用户使用基本功能
+        setLoading(false);
+      }
     };
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -77,13 +81,17 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 監聽資料庫菜品
+  // 監聽資料庫菜品 - 增加錯誤處理
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'dishes'), (snap) => {
       const dishes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (dishes.length > 0) setDishList(dishes);
-    }, (error) => console.log("Firestore error:", error));
+    }, (error) => {
+      console.log("Firestore error:", error);
+      // 如果云端数据加载失败，使用本地初始数据
+      setDishList(INITIAL_DISHES);
+    });
     return () => unsub();
   }, [user, appId]);
 
@@ -112,9 +120,15 @@ export default function App() {
     });
   }, [activeTab]);
 
-  // 將訂單保存到雲端 Firestore (持久化保存)
+  // 將訂單保存到雲端 Firestore (持久化保存) - 增加錯誤處理
   const saveOrderToCloud = async () => {
-    if (!user) return;
+    if (!user) {
+      // 如果没有认证，仍然可以进入下一步，只是不能保存到云端
+      console.warn("用戶未認證，僅支持本地查看");
+      setStep(4);
+      return;
+    }
+    
     setIsSaving(true);
     try {
       const orderRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
@@ -127,6 +141,8 @@ export default function App() {
       setStep(4);
     } catch (error) {
       console.error("保存失敗:", error);
+      // 即使云端保存失败，也允许用户查看报告
+      setStep(4);
     } finally {
       setIsSaving(false);
     }
