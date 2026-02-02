@@ -3,6 +3,7 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  width: 100%;
 }
 
 .logo {
@@ -39,4 +40,24 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* 重置一些全局样式以确保正确的居中对齐 */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f7fa;
 }
