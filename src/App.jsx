@@ -138,9 +138,13 @@ export default function App() {
         createdAt: serverTimestamp(),
         userId: user.uid
       });
+      console.log("訂單已保存到雲端");
       setStep(4);
     } catch (error) {
       console.error("保存失敗:", error);
+      if (error.code === 'permission-denied') {
+        console.warn("Firebase權限不足，將以離線模式繼續");
+      }
       // 即使云端保存失败，也允许用户查看报告
       setStep(4);
     } finally {
