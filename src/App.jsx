@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from './firebase';
+import { signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { 
-  getFirestore, collection, doc, onSnapshot, 
+  collection, doc, onSnapshot, 
   addDoc, setDoc, serverTimestamp 
 } from 'firebase/firestore';
 import { 
@@ -10,26 +10,6 @@ import {
   ClipboardList, Trash2, Calendar, Sun, Moon, Filter, Phone, User, Hash, CloudUpload
 } from 'lucide-react';
 
-// ==========================================
-// ⚠️ 這裡的配置已經根據您的提供進行更新
-// ==========================================
-const myPrivateConfig = {
-  apiKey: "AIzaSyAvciancSscS_qf-df5cifrqjKWtMOODj0",
-  authDomain: "pingjiejia-liudongcan.firebaseapp.com", 
-  projectId: "pingjiejia-liudongcan",
-  storageBucket: "pingjiejia-liudongcan.firebasestorage.app",
-  messagingSenderId: "193505058332",
-  appId: "1:193505058332:web:cfc5f51fb8370ddeb309d9",
-  measurementId: "G-6Z8Y1YYE0D"
-};
-
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : myPrivateConfig;
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'catering-pro-v1';
 
 const INITIAL_DISHES = [
