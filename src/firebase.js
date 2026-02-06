@@ -12,8 +12,6 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
-// 诊断代码：它会直接把读取到的 Key 前 5 位打印在网页控制台
-console.log("Production API Key Check:", import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 5));
 
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig);
